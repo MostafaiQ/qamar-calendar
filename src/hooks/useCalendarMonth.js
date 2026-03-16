@@ -32,26 +32,36 @@ export function useCalendarMonth(hijriYear, hijriMonth, adjustment = 0) {
         startGregorian = addDays(startGregorian, -adjustment)
       }
 
-      // Determine month length: check if next month has an override too
+      // Determine month length
+      // Only use Shia override for next month, or Sunni-to-Sunni diff
+      // Never mix Shia start with Sunni end (off-by-1 corrupts the length)
       let monthLength = 30
       const nextMonth = hijriMonth === 12 ? 1 : hijriMonth + 1
       const nextYear = hijriMonth === 12 ? hijriYear + 1 : hijriYear
       const nextOverride = monthStarts[nextYear]?.[nextMonth]
-      if (nextOverride) {
+      if (nextOverride && monthOverride) {
+        // Both Shia: safe to diff
         const [y, m, d] = nextOverride.gregorianStart.split('-').map(Number)
         const nextDate = new Date(y, m - 1, d)
-        const diff = Math.round((nextDate - startGregorian) / (1000 * 60 * 60 * 24))
+        const baseStart = monthOverride
+          ? new Date(...monthOverride.gregorianStart.split('-').map((v, i) => i === 1 ? v - 1 : +v))
+          : startGregorian
+        const diff = Math.round((nextDate - baseStart) / (1000 * 60 * 60 * 24))
         if (diff >= 29 && diff <= 30) monthLength = diff
-      } else {
+      } else if (!monthOverride) {
+        // Both Sunni: safe to diff
         try {
           const next = toGregorian(nextYear, nextMonth, 1)
           const nextDate = new Date(next.gy, next.gm - 1, next.gd)
-          const diff = Math.round((nextDate - startGregorian) / (1000 * 60 * 60 * 24))
+          const { gy, gm, gd } = toGregorian(hijriYear, hijriMonth, 1)
+          const sunniStart = new Date(gy, gm - 1, gd)
+          const diff = Math.round((nextDate - sunniStart) / (1000 * 60 * 60 * 24))
           if (diff >= 29 && diff <= 30) monthLength = diff
         } catch (e) {
           // default 30
         }
       }
+      // If Shia start but no Shia next-month override: default 30
 
       const monthDays = []
       for (let i = 0; i < monthLength; i++) {
