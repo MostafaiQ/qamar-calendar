@@ -10,7 +10,8 @@ function resolveFromOverrides(date, adjustment) {
     for (const [monthStr, info] of Object.entries(months)) {
       if (dateStr >= info.gregorianStart) {
         const start = new Date(info.gregorianStart + 'T00:00:00')
-        const diffDays = Math.round((date - start) / (1000 * 60 * 60 * 24))
+        const dateMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+        const diffDays = Math.round((dateMidnight - start) / (1000 * 60 * 60 * 24))
         const hijriDay = diffDays + 1 + adjustment
         if (hijriDay >= 1 && hijriDay <= 30) {
           if (!bestMatch || info.gregorianStart > bestMatch.gregorianStart) {
