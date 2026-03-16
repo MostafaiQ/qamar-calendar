@@ -7,23 +7,26 @@ export default function MonthNav({ hijriYear, hijriMonth, onPrev, onNext }) {
   const monthName = lang === 'ar' ? `شهر ${monthData.ar}` : monthData.en
 
   return (
-    <div className="flex items-center justify-center gap-4 py-3 bg-white dark:bg-gray-800">
+    <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-800">
       <button
         onClick={onPrev}
-        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors active:scale-90 text-lg"
         aria-label="Previous month"
       >
-        {lang === 'ar' ? '→' : '←'}
+        {lang === 'ar' ? '›' : '‹'}
       </button>
-      <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 font-arabic min-w-[200px] text-center">
-        {monthName} {hijriYear}
-      </h2>
+      <div className="text-center">
+        <h2 className="text-base font-bold text-gray-800 dark:text-gray-100 font-arabic">
+          {monthName}
+        </h2>
+        <p className="text-[11px] text-gray-400 dark:text-gray-500">{hijriYear} هـ</p>
+      </div>
       <button
         onClick={onNext}
-        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors active:scale-90 text-lg"
         aria-label="Next month"
       >
-        {lang === 'ar' ? '←' : '→'}
+        {lang === 'ar' ? '‹' : '›'}
       </button>
     </div>
   )

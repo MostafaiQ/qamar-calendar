@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { LocaleProvider, useLocale } from './i18n/useLocale.jsx'
 import { useHijriDate } from './hooks/useHijriDate.js'
 import { useCalendarMonth } from './hooks/useCalendarMonth.js'
@@ -10,6 +10,7 @@ import AdjustmentControl from './components/AdjustmentControl.jsx'
 
 function AppContent() {
   const { t } = useLocale()
+  const detailRef = useRef(null)
   const [adjustment, setAdjustment] = useState(() =>
     parseInt(localStorage.getItem('hijriAdjustment') || '0')
   )
@@ -17,7 +18,6 @@ function AppContent() {
     return localStorage.getItem('darkMode') === 'true'
   })
 
-  // Apply dark mode class to <html>
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
     localStorage.setItem('darkMode', String(darkMode))
@@ -38,37 +38,55 @@ function AppContent() {
 
   const { days } = useCalendarMonth(currentYear, currentMonth, adjustment)
 
+  // Swipe handling for month navigation
+  const touchStart = useRef(null)
+  const handleTouchStart = useCallback((e) => {
+    touchStart.current = e.touches[0].clientX
+  }, [])
+  const handleTouchEnd = useCallback((e) => {
+    if (touchStart.current === null) return
+    const diff = e.changedTouches[0].clientX - touchStart.current
+    touchStart.current = null
+    if (Math.abs(diff) < 60) return
+    // RTL: swipe left = next, swipe right = prev
+    const isRtl = document.documentElement.dir === 'rtl'
+    if ((diff > 0 && !isRtl) || (diff < 0 && isRtl)) {
+      // prev month
+      setSelectedDay(null)
+      if (currentMonth === 1) { setViewYear(currentYear - 1); setViewMonth(12) }
+      else { setViewYear(currentYear); setViewMonth(currentMonth - 1) }
+    } else {
+      // next month
+      setSelectedDay(null)
+      if (currentMonth === 12) { setViewYear(currentYear + 1); setViewMonth(1) }
+      else { setViewYear(currentYear); setViewMonth(currentMonth + 1) }
+    }
+  }, [currentYear, currentMonth])
+
   const handleDayClick = useCallback((day) => {
     setSelectedDay(day.hijriDay)
     setSelectedGregorian(day.gregorianDate)
+    // Scroll to detail on mobile
+    setTimeout(() => {
+      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
   }, [])
 
   const handlePrevMonth = useCallback(() => {
     setSelectedDay(null)
-    if (currentMonth === 1) {
-      setViewYear(currentYear - 1)
-      setViewMonth(12)
-    } else {
-      setViewYear(currentYear)
-      setViewMonth(currentMonth - 1)
-    }
+    if (currentMonth === 1) { setViewYear(currentYear - 1); setViewMonth(12) }
+    else { setViewYear(currentYear); setViewMonth(currentMonth - 1) }
   }, [currentYear, currentMonth])
 
   const handleNextMonth = useCallback(() => {
     setSelectedDay(null)
-    if (currentMonth === 12) {
-      setViewYear(currentYear + 1)
-      setViewMonth(1)
-    } else {
-      setViewYear(currentYear)
-      setViewMonth(currentMonth + 1)
-    }
+    if (currentMonth === 12) { setViewYear(currentYear + 1); setViewMonth(1) }
+    else { setViewYear(currentYear); setViewMonth(currentMonth + 1) }
   }, [currentYear, currentMonth])
 
   const handleAdjustmentChange = useCallback((newVal) => {
     setAdjustment(newVal)
     localStorage.setItem('hijriAdjustment', String(newVal))
-    // Reset selection so it picks up the new date
     setSelectedDay(null)
     setViewYear(null)
     setViewMonth(null)
@@ -78,38 +96,49 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+      {/* Mobile: sticky header */}
+      <div className="sticky top-0 z-30 lg:relative">
+        <Header darkMode={darkMode} onToggleDark={toggleDark} />
+      </div>
+
       <div className="max-w-5xl mx-auto lg:flex lg:gap-6 lg:p-6">
         {/* Calendar side */}
-        <div className="lg:w-[360px] lg:flex-shrink-0">
+        <div className="lg:w-[380px] lg:flex-shrink-0">
           <div className="bg-white dark:bg-gray-800 lg:rounded-xl lg:shadow-sm lg:border lg:border-gray-200 dark:lg:border-gray-700">
-            <Header darkMode={darkMode} onToggleDark={toggleDark} />
             <MonthNav
               hijriYear={currentYear}
               hijriMonth={currentMonth}
               onPrev={handlePrevMonth}
               onNext={handleNextMonth}
             />
-            <CalendarGrid
-              days={days}
-              selectedDay={selectedDay || hijri?.day}
-              todayHijriDay={hijri?.day}
-              currentMonth={currentMonth}
-              todayMonth={hijri?.month}
-              onDayClick={handleDayClick}
-            />
+            <div
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+            >
+              <CalendarGrid
+                days={days}
+                selectedDay={selectedDay || hijri?.day}
+                todayHijriDay={hijri?.day}
+                currentMonth={currentMonth}
+                todayMonth={hijri?.month}
+                onDayClick={handleDayClick}
+              />
+            </div>
           </div>
         </div>
 
         {/* Detail side */}
-        <div className="flex-1 lg:min-w-0">
-          <div className="bg-white dark:bg-gray-800 lg:rounded-xl lg:shadow-sm lg:border lg:border-gray-200 dark:lg:border-gray-700">
+        <div className="flex-1 lg:min-w-0" ref={detailRef}>
+          <div className="bg-white dark:bg-gray-800 mt-2 mx-2 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 lg:mt-0 lg:mx-0">
             <DayDetail
               hijri={selectedHijri}
               gregorianDate={selectedDay ? selectedGregorian : refDate}
             />
           </div>
 
-          <AdjustmentControl value={adjustment} onChange={handleAdjustmentChange} />
+          <div className="mx-2 lg:mx-0">
+            <AdjustmentControl value={adjustment} onChange={handleAdjustmentChange} />
+          </div>
 
           <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-4 px-4 font-arabic">
             {t('disclaimer')}

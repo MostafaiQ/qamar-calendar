@@ -9,18 +9,21 @@ export default function CalendarGrid({ days, selectedDay, todayHijriDay, current
   const firstDayWeekday = days.length > 0 ? days[0].weekdayIndex : 0
 
   return (
-    <div className="px-2 pb-2">
-      <div className="grid grid-cols-7 gap-1 mb-1">
+    <div className="px-3 pb-3">
+      {/* Weekday header row */}
+      <div className="grid grid-cols-7 mb-1">
         {headers.map((name, i) => (
-          <div key={i} className="text-center text-xs text-gray-500 dark:text-gray-400 py-1 font-arabic">
+          <div key={i} className="text-center text-[11px] font-medium text-gray-400 dark:text-gray-500 py-2 font-arabic uppercase">
             {name}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      {/* Day cells */}
+      <div className="grid grid-cols-7 gap-[3px]">
+        {/* Empty leading cells */}
         {Array.from({ length: firstDayWeekday }, (_, i) => (
-          <div key={`empty-${i}`} />
+          <div key={`empty-${i}`} className="aspect-square" />
         ))}
 
         {days.map((day) => (
