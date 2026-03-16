@@ -1,67 +1,28 @@
 import { useMemo } from 'react'
-import { toGregorian } from 'hijri-converter'
 import { getMoonSign } from '../engine/moonSign.js'
 import { getConsensus } from '../engine/consensus.js'
 import { getWeekdayIndex, addDays } from '../utils/dateHelpers.js'
-import monthStarts from '../data/monthStarts.js'
+import { getMonthStart, getMonthLength } from '../data/monthStarts.js'
 
 /**
  * Returns a full month of day objects for the calendar grid.
- * Uses Shia overrides first, falls back to hijri-converter.
+ * Always uses Shia calendar (confirmed sightings or Sunni+1 offset).
  */
 export function useCalendarMonth(hijriYear, hijriMonth, adjustment = 0) {
   const days = useMemo(() => {
     try {
-      let startGregorian
+      const startStr = getMonthStart(hijriYear, hijriMonth)
+      if (!startStr) return []
 
-      // Check Shia override first
-      const yearOverrides = monthStarts[hijriYear]
-      const monthOverride = yearOverrides?.[hijriMonth]
-      if (monthOverride) {
-        const [y, m, d] = monthOverride.gregorianStart.split('-').map(Number)
-        startGregorian = new Date(y, m - 1, d)
-      } else {
-        // Fallback to hijri-converter (Sunni/Umm al-Qura)
-        const { gy, gm, gd } = toGregorian(hijriYear, hijriMonth, 1)
-        startGregorian = new Date(gy, gm - 1, gd)
-      }
+      const [y, m, d] = startStr.split('-').map(Number)
+      let startGregorian = new Date(y, m - 1, d)
 
-      // Apply adjustment: shift the month start by -adjustment days
-      // +1 means "the real month started 1 day earlier than recorded"
+      // Apply manual adjustment
       if (adjustment !== 0) {
         startGregorian = addDays(startGregorian, -adjustment)
       }
 
-      // Determine month length
-      // Only use Shia override for next month, or Sunni-to-Sunni diff
-      // Never mix Shia start with Sunni end (off-by-1 corrupts the length)
-      let monthLength = 30
-      const nextMonth = hijriMonth === 12 ? 1 : hijriMonth + 1
-      const nextYear = hijriMonth === 12 ? hijriYear + 1 : hijriYear
-      const nextOverride = monthStarts[nextYear]?.[nextMonth]
-      if (nextOverride && monthOverride) {
-        // Both Shia: safe to diff
-        const [y, m, d] = nextOverride.gregorianStart.split('-').map(Number)
-        const nextDate = new Date(y, m - 1, d)
-        const baseStart = monthOverride
-          ? new Date(...monthOverride.gregorianStart.split('-').map((v, i) => i === 1 ? v - 1 : +v))
-          : startGregorian
-        const diff = Math.round((nextDate - baseStart) / (1000 * 60 * 60 * 24))
-        if (diff >= 29 && diff <= 30) monthLength = diff
-      } else if (!monthOverride) {
-        // Both Sunni: safe to diff
-        try {
-          const next = toGregorian(nextYear, nextMonth, 1)
-          const nextDate = new Date(next.gy, next.gm - 1, next.gd)
-          const { gy, gm, gd } = toGregorian(hijriYear, hijriMonth, 1)
-          const sunniStart = new Date(gy, gm - 1, gd)
-          const diff = Math.round((nextDate - sunniStart) / (1000 * 60 * 60 * 24))
-          if (diff >= 29 && diff <= 30) monthLength = diff
-        } catch (e) {
-          // default 30
-        }
-      }
-      // If Shia start but no Shia next-month override: default 30
+      const monthLength = getMonthLength(hijriYear, hijriMonth)
 
       const monthDays = []
       for (let i = 0; i < monthLength; i++) {

@@ -1,60 +1,43 @@
 import { useMemo } from 'react'
-import { toHijri } from 'hijri-converter'
-import monthStarts from '../data/monthStarts.js'
+import { getMonthStart } from '../data/monthStarts.js'
 
-function resolveFromOverrides(date, adjustment) {
-  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+/**
+ * Resolve today's Shia Hijri date.
+ * Uses getMonthStart (confirmed sightings or Sunni+1 offset).
+ * Never returns raw Sunni dates.
+ */
+export function useHijriDate(gregorianDate, adjustment = 0) {
+  const hijri = useMemo(() => {
+    const dateMidnight = new Date(
+      gregorianDate.getFullYear(),
+      gregorianDate.getMonth(),
+      gregorianDate.getDate()
+    )
 
-  let bestMatch = null
-  for (const [yearStr, months] of Object.entries(monthStarts)) {
-    for (const [monthStr, info] of Object.entries(months)) {
-      if (dateStr >= info.gregorianStart) {
-        const start = new Date(info.gregorianStart + 'T00:00:00')
-        const dateMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    // Search through recent years/months to find which Shia month contains today
+    // Start from a reasonable estimate and search nearby
+    const approxYear = dateMidnight.getFullYear() < 2030
+      ? Math.floor((dateMidnight.getFullYear() - 621.57) * (12 / 12.3685))
+      : 1447
+
+    for (let y = approxYear + 1; y >= approxYear - 1; y--) {
+      for (let m = 12; m >= 1; m--) {
+        const startStr = getMonthStart(y, m)
+        if (!startStr) continue
+
+        const [sy, sm, sd] = startStr.split('-').map(Number)
+        const start = new Date(sy, sm - 1, sd)
         const diffDays = Math.round((dateMidnight - start) / (1000 * 60 * 60 * 24))
         const hijriDay = diffDays + 1 + adjustment
+
         if (hijriDay >= 1 && hijriDay <= 30) {
-          if (!bestMatch || info.gregorianStart > bestMatch.gregorianStart) {
-            bestMatch = {
-              year: parseInt(yearStr),
-              month: parseInt(monthStr),
-              day: hijriDay,
-            }
-          }
+          return { year: y, month: m, day: hijriDay }
         }
       }
     }
-  }
-  return bestMatch
-}
 
-function resolveFromLibrary(date, adjustment) {
-  try {
-    const { hy, hm, hd } = toHijri(
-      date.getFullYear(),
-      date.getMonth() + 1,
-      date.getDate()
-    )
-    let day = hd + adjustment
-    let month = hm
-    let year = hy
-    if (day < 1) { month--; day += 30 }
-    if (day > 30) { month++; day -= 30 }
-    if (month < 1) { year--; month = 12 }
-    if (month > 12) { year++; month = 1 }
-    return { year, month, day }
-  } catch (e) {
-    return { year: 1447, month: 1, day: 1 }
-  }
-}
-
-export function useHijriDate(gregorianDate, adjustment = 0) {
-  const hijri = useMemo(() => {
-    // Try Shia overrides first (synchronous, instant)
-    const fromOverrides = resolveFromOverrides(gregorianDate, adjustment)
-    if (fromOverrides) return fromOverrides
-    // Fallback to hijri-converter (Umm al-Qura)
-    return resolveFromLibrary(gregorianDate, adjustment)
+    // Should never reach here, but just in case
+    return { year: approxYear, month: 1, day: 1 }
   }, [gregorianDate.getTime(), adjustment])
 
   return { hijri }
