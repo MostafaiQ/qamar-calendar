@@ -1,5 +1,5 @@
-// Table 2: Day of the Week rulings
-// Source: الدروع الواقية
+// Table 2: Day of the Week rulings (أيام الأسبوع)
+// Source: مكارم الأخلاق - الشيخ الطبرسي
 // Index: 0=Saturday, 1=Sunday, ..., 6=Friday
 // null means neutral/مباح
 const weekdayRulings = {

@@ -1,5 +1,5 @@
-// Table 1: Moon in Zodiac Sign rulings
-// Source: الدروع الواقية - السيد ابن طاووس
+// Table 1: Moon in Zodiac Sign rulings (القمر في البروج)
+// Source: مكارم الأخلاق - الشيخ الطبرسي
 // null means neutral/مباح (no specific ruling)
 const zodiacRulings = {
   0:  { marriage: null,     travel: null,     building: null,     work: null     }, // Pisces
