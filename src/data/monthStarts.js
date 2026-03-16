@@ -3,33 +3,11 @@ import { toGregorian } from 'hijri-converter'
 // Confirmed Shia/Sistani month starts from sighting announcements
 // Populated by GitHub Actions cron job scraping imam-us.org / sistani.org
 // Manual entries can be added here too
+// ONLY add dates here that are confirmed via moon sighting announcements.
+// The cron job will add new months as they are confirmed.
+// Do NOT guess or pre-populate — wrong dates break month lengths.
 const confirmedStarts = {
-  // 1446
-  '1446-1':  '2024-07-07',
-  '1446-2':  '2024-08-06',
-  '1446-3':  '2024-09-05',
-  '1446-4':  '2024-10-04',
-  '1446-5':  '2024-11-03',
-  '1446-6':  '2024-12-02',
-  '1446-7':  '2025-01-01',
-  '1446-8':  '2025-01-31',
-  '1446-9':  '2025-03-01',
-  '1446-10': '2025-03-30',
-  '1446-11': '2025-04-29',
-  '1446-12': '2025-05-28',
-  // 1447
-  '1447-1':  '2025-06-26',
-  '1447-2':  '2025-07-26',
-  '1447-3':  '2025-08-24',
-  '1447-4':  '2025-09-23',
-  '1447-5':  '2025-10-23',
-  '1447-6':  '2025-11-21',
-  '1447-7':  '2025-12-21',
-  '1447-8':  '2026-01-20',
   '1447-9':  '2026-02-19',   // Ramadan — confirmed imam-us.org
-  '1447-10': '2026-03-20',
-  '1447-11': '2026-04-19',
-  '1447-12': '2026-05-18',
 }
 
 /**
@@ -59,23 +37,31 @@ export function getMonthStart(hijriYear, hijriMonth) {
 }
 
 /**
- * Get month length by diffing this month's start with next month's start.
+ * Get month length.
+ * Only trust the diff when BOTH this month and next month are confirmed.
+ * If either is unconfirmed (from hijri-converter fallback), default to 30.
  */
 export function getMonthLength(hijriYear, hijriMonth) {
-  const startStr = getMonthStart(hijriYear, hijriMonth)
+  const thisKey = `${hijriYear}-${hijriMonth}`
   const nextMonth = hijriMonth === 12 ? 1 : hijriMonth + 1
   const nextYear = hijriMonth === 12 ? hijriYear + 1 : hijriYear
-  const nextStr = getMonthStart(nextYear, nextMonth)
+  const nextKey = `${nextYear}-${nextMonth}`
 
-  if (!startStr || !nextStr) return 30
+  const thisConfirmed = !!confirmedStarts[thisKey]
+  const nextConfirmed = !!confirmedStarts[nextKey]
 
-  const [sy, sm, sd] = startStr.split('-').map(Number)
-  const [ny, nm, nd] = nextStr.split('-').map(Number)
-  const start = new Date(sy, sm - 1, sd)
-  const next = new Date(ny, nm - 1, nd)
-  const diff = Math.round((next - start) / (1000 * 60 * 60 * 24))
+  // Only compute diff if BOTH months are confirmed sightings
+  if (thisConfirmed && nextConfirmed) {
+    const [sy, sm, sd] = confirmedStarts[thisKey].split('-').map(Number)
+    const [ny, nm, nd] = confirmedStarts[nextKey].split('-').map(Number)
+    const start = new Date(sy, sm - 1, sd)
+    const next = new Date(ny, nm - 1, nd)
+    const diff = Math.round((next - start) / (1000 * 60 * 60 * 24))
+    if (diff >= 29 && diff <= 30) return diff
+  }
 
-  return (diff >= 29 && diff <= 30) ? diff : 30
+  // Otherwise default to 30 — never mix confirmed with unconfirmed
+  return 30
 }
 
 /**
