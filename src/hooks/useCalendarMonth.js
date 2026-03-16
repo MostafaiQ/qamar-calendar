@@ -26,6 +26,12 @@ export function useCalendarMonth(hijriYear, hijriMonth, adjustment = 0) {
         startGregorian = new Date(gy, gm - 1, gd)
       }
 
+      // Apply adjustment: shift the month start by -adjustment days
+      // +1 means "the real month started 1 day earlier than recorded"
+      if (adjustment !== 0) {
+        startGregorian = addDays(startGregorian, -adjustment)
+      }
+
       // Determine month length: check if next month has an override too
       let monthLength = 30
       const nextMonth = hijriMonth === 12 ? 1 : hijriMonth + 1
