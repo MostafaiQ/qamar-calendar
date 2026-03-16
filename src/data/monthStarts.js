@@ -23,14 +23,26 @@ export function getMonthStart(hijriYear, hijriMonth) {
     return confirmedStarts[key]
   }
 
+  // Check if the PREVIOUS month is confirmed — if so, derive this month's
+  // start from it (previous start + 30 days) to avoid overlap
+  const prevMonth = hijriMonth === 1 ? 12 : hijriMonth - 1
+  const prevYear = hijriMonth === 1 ? hijriYear - 1 : hijriYear
+  const prevKey = `${prevYear}-${prevMonth}`
+  if (confirmedStarts[prevKey]) {
+    const [py, pm, pd] = confirmedStarts[prevKey].split('-').map(Number)
+    const prevStart = new Date(py, pm - 1, pd)
+    // Previous month is 30 days (default when next isn't confirmed)
+    prevStart.setDate(prevStart.getDate() + 30)
+    const y = prevStart.getFullYear()
+    const m = String(prevStart.getMonth() + 1).padStart(2, '0')
+    const d = String(prevStart.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+
   // Fallback: use hijri-converter as-is (no offset assumption)
-  // The user can manually adjust, and the cron job will add correct data
   try {
     const { gy, gm, gd } = toGregorian(hijriYear, hijriMonth, 1)
-    const y = gy
-    const m = String(gm).padStart(2, '0')
-    const d = String(gd).padStart(2, '0')
-    return `${y}-${m}-${d}`
+    return `${gy}-${String(gm).padStart(2, '0')}-${String(gd).padStart(2, '0')}`
   } catch (e) {
     return null
   }
