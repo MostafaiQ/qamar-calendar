@@ -7,6 +7,7 @@ import NarrationCard from './NarrationCard.jsx'
 import RulingMatrix from './RulingMatrix.jsx'
 import ReadingCard from './ReadingCard.jsx'
 import DuaaCard from './DuaaCard.jsx'
+import DreamCard from './DreamCard.jsx'
 
 export default function DayDetail({ hijri, gregorianDate }) {
   const { lang, t } = useLocale()
@@ -42,7 +43,10 @@ export default function DayDetail({ hijri, gregorianDate }) {
 
       <ReadingCard reading={dayData.reading} />
 
+      <DreamCard hijriDay={hijri.day} />
+
       <DuaaCard show={dayData.consensus.showDuaa} />
+
     </div>
   )
 }

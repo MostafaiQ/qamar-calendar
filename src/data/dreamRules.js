@@ -1,0 +1,36 @@
+// Dream interpretation rules per Hijri day
+// Source: روايات عن الإمام الصادق عليه السلام / رواية سلمان
+const dreamRules = {
+  1:  { ar: 'الرؤيا فيه باطلة.', en: 'Dreams on this day are void.' },
+  2:  { ar: 'تعبيرها بالعكس.', en: 'Interpretation is reversed.' },
+  3:  { ar: 'تعبيرها بالعكس.', en: 'Interpretation is reversed.' },
+  4:  { ar: 'تعبيرها تتأخر.', en: 'Interpretation is delayed.' },
+  5:  { ar: 'تعبيرها بالتأخير.', en: 'Interpretation is delayed.' },
+  6:  { ar: 'صحيح. وفي رواية سلمان بعد يوم أو يومين يظهر تعبيرها.', en: 'True. Per Salman\'s narration, it manifests in 1-2 days.' },
+  7:  { ar: 'صحيح.', en: 'True.' },
+  8:  { ar: 'صحيح.', en: 'True.' },
+  9:  { ar: 'صحيح. وفي رواية سلمان يظهر تعبيرها في نفس اليوم.', en: 'True. Per Salman\'s narration, it manifests the same day.' },
+  10: { ar: 'تقع بالتأخير. وفي رواية سلمان بعد 20 يوم يظهر التعبير.', en: 'Delayed. Per Salman\'s narration, manifests after 20 days.' },
+  11: { ar: 'تقع بالتأخير. وفي رواية سلمان بعد 20 يوم يظهر التعبير.', en: 'Delayed. Per Salman\'s narration, manifests after 20 days.' },
+  12: { ar: 'تقع بالتأخير.', en: 'Delayed.' },
+  13: { ar: 'لا خير ولا شر. وفي رواية سلمان بعد 9 أيام يظهر التعبير.', en: 'Neither good nor bad. Per Salman, manifests after 9 days.' },
+  14: { ar: 'لا خير ولا شر. وفي رواية سلمان بعد 26 يوم يظهر التعبير.', en: 'Neither good nor bad. Per Salman, manifests after 26 days.' },
+  15: { ar: 'لا خير ولا شر. وفي رواية سلمان بعد 3 أيام يظهر التعبير.', en: 'Neither good nor bad. Per Salman, manifests after 3 days.' },
+  16: { ar: 'بالتأخير.', en: 'Delayed.' },
+  17: { ar: 'بالتأخير.', en: 'Delayed.' },
+  18: { ar: 'الرؤيا صحيحة.', en: 'The dream is true.' },
+  19: { ar: 'الرؤيا صحيحة.', en: 'The dream is true.' },
+  20: { ar: 'الرؤيا كاذبة.', en: 'The dream is false.' },
+  21: { ar: 'الرؤيا كاذبة.', en: 'The dream is false.' },
+  22: { ar: 'فرح وسرور.', en: 'Joy and happiness.' },
+  23: { ar: 'فرح وسرور.', en: 'Joy and happiness.' },
+  24: { ar: 'تعبيرها بالعكس.', en: 'Interpretation is reversed.' },
+  25: { ar: 'تعبيرها بالعكس.', en: 'Interpretation is reversed.' },
+  26: { ar: 'تعبيرها بالعكس. وفي رواية سلمان يظهر التعبير في نفس اليوم.', en: 'Reversed. Per Salman, manifests the same day.' },
+  27: { ar: 'تعبيرها بالعكس.', en: 'Interpretation is reversed.' },
+  28: { ar: 'صحيح.', en: 'True.' },
+  29: { ar: 'صحيح. وفي رواية سلمان يظهر التعبير في نفس اليوم وتتحقق.', en: 'True. Per Salman, manifests and comes true the same day.' },
+  30: { ar: 'صحيح.', en: 'True.' },
+}
+
+export default dreamRules

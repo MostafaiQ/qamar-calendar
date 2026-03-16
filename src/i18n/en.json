@@ -20,11 +20,8 @@
   "disclaimer": "This is a guidance tool based on the narrations of Ahlul Bayt (as) and is not a fatwa",
   "source": "Source",
   "charityNote": "It is recommended to give charity to ward off misfortune",
-  "saturday": "Saturday",
-  "sunday": "Sunday",
-  "monday": "Monday",
-  "tuesday": "Tuesday",
-  "wednesday": "Wednesday",
-  "thursday": "Thursday",
-  "friday": "Friday"
+  "ikhtilajatTitle": "Body Twitching Meanings",
+  "ikhtilajatPlaceholder": "Type the body part...",
+  "noResults": "No results found",
+  "dreamTitle": "Dream Interpretation for This Day"
 }

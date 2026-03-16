@@ -1,30 +1,12 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { toHijri } from 'hijri-converter'
+import monthStarts from '../data/monthStarts.js'
 
-let overridesCache = null
-let overridesLoading = null
-
-function loadOverrides() {
-  if (overridesCache) return Promise.resolve(overridesCache)
-  if (!overridesLoading) {
-    overridesLoading = fetch(import.meta.env.BASE_URL + 'overrides/month-starts.json')
-      .then(r => r.ok ? r.json() : {})
-      .then(data => { overridesCache = data; return data })
-      .catch(() => { overridesCache = {}; return {} })
-  }
-  return overridesLoading
-}
-
-// Start loading immediately
-loadOverrides()
-
-function resolveFromOverrides(date, overrides, adjustment) {
-  if (!overrides) return null
+function resolveFromOverrides(date, adjustment) {
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
-  // Check all years and months, find the latest override that is <= date
   let bestMatch = null
-  for (const [yearStr, months] of Object.entries(overrides)) {
+  for (const [yearStr, months] of Object.entries(monthStarts)) {
     for (const [monthStr, info] of Object.entries(months)) {
       if (dateStr >= info.gregorianStart) {
         const start = new Date(info.gregorianStart + 'T00:00:00')
@@ -36,7 +18,6 @@ function resolveFromOverrides(date, overrides, adjustment) {
               year: parseInt(yearStr),
               month: parseInt(monthStr),
               day: hijriDay,
-              gregorianStart: info.gregorianStart,
             }
           }
         }
@@ -67,19 +48,12 @@ function resolveFromLibrary(date, adjustment) {
 }
 
 export function useHijriDate(gregorianDate, adjustment = 0) {
-  // Start with library fallback for instant render
-  const [hijri, setHijri] = useState(() => resolveFromLibrary(gregorianDate, adjustment))
-
-  useEffect(() => {
-    // Try overrides for more accurate Shia date
-    loadOverrides().then(overrides => {
-      const fromOverrides = resolveFromOverrides(gregorianDate, overrides, adjustment)
-      if (fromOverrides) {
-        setHijri(fromOverrides)
-      } else {
-        setHijri(resolveFromLibrary(gregorianDate, adjustment))
-      }
-    })
+  const hijri = useMemo(() => {
+    // Try Shia overrides first (synchronous, instant)
+    const fromOverrides = resolveFromOverrides(gregorianDate, adjustment)
+    if (fromOverrides) return fromOverrides
+    // Fallback to hijri-converter (Umm al-Qura)
+    return resolveFromLibrary(gregorianDate, adjustment)
   }, [gregorianDate.getTime(), adjustment])
 
   return { hijri }
