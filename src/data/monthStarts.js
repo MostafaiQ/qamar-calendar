@@ -2,44 +2,59 @@ import { toGregorian } from 'hijri-converter'
 
 // Confirmed Shia/Sistani month starts from sighting announcements
 // Populated by GitHub Actions cron job scraping imam-us.org / sistani.org
-// Manual entries can be added here too
 // ONLY add dates here that are confirmed via moon sighting announcements.
-// The cron job will add new months as they are confirmed.
-// Do NOT guess or pre-populate — wrong dates break month lengths.
 const confirmedStarts = {
   '1447-9':  '2026-02-19',   // Ramadan — confirmed imam-us.org
 }
 
 /**
+ * Get the astronomical month length from hijri-converter (29 or 30).
+ * This is the correct lunar 29/30 alternation pattern.
+ */
+function getSunniMonthLength(hijriYear, hijriMonth) {
+  try {
+    const s = toGregorian(hijriYear, hijriMonth, 1)
+    const nm = hijriMonth === 12 ? 1 : hijriMonth + 1
+    const ny = hijriMonth === 12 ? hijriYear + 1 : hijriYear
+    const n = toGregorian(ny, nm, 1)
+    const start = new Date(s.gy, s.gm - 1, s.gd)
+    const next = new Date(n.gy, n.gm - 1, n.gd)
+    const diff = Math.round((next - start) / (1000 * 60 * 60 * 24))
+    return (diff === 29 || diff === 30) ? diff : 30
+  } catch (e) {
+    return 30
+  }
+}
+
+/**
  * Get the Gregorian start date for a Shia Hijri month.
- * Uses confirmed/scraped sighting data first.
- * Falls back to hijri-converter (Sunni) only if no data exists yet.
- * The cron job will fill in missing months over time.
+ * Priority: confirmed sighting > derived from confirmed previous month > hijri-converter
  */
 export function getMonthStart(hijriYear, hijriMonth) {
   const key = `${hijriYear}-${hijriMonth}`
 
+  // 1. Confirmed sighting
   if (confirmedStarts[key]) {
     return confirmedStarts[key]
   }
 
-  // Check if the PREVIOUS month is confirmed — if so, derive this month's
-  // start from it (previous start + 30 days) to avoid overlap
+  // 2. Derive from confirmed previous month + its length
   const prevMonth = hijriMonth === 1 ? 12 : hijriMonth - 1
   const prevYear = hijriMonth === 1 ? hijriYear - 1 : hijriYear
   const prevKey = `${prevYear}-${prevMonth}`
   if (confirmedStarts[prevKey]) {
     const [py, pm, pd] = confirmedStarts[prevKey].split('-').map(Number)
     const prevStart = new Date(py, pm - 1, pd)
-    // Previous month is 30 days (default when next isn't confirmed)
-    prevStart.setDate(prevStart.getDate() + 30)
+    // Use the correct 29/30 length for the previous month
+    const prevLength = getSunniMonthLength(prevYear, prevMonth)
+    prevStart.setDate(prevStart.getDate() + prevLength)
     const y = prevStart.getFullYear()
     const m = String(prevStart.getMonth() + 1).padStart(2, '0')
     const d = String(prevStart.getDate()).padStart(2, '0')
     return `${y}-${m}-${d}`
   }
 
-  // Fallback: use hijri-converter as-is (no offset assumption)
+  // 3. Fallback: hijri-converter as-is
   try {
     const { gy, gm, gd } = toGregorian(hijriYear, hijriMonth, 1)
     return `${gy}-${String(gm).padStart(2, '0')}-${String(gd).padStart(2, '0')}`
@@ -49,9 +64,9 @@ export function getMonthStart(hijriYear, hijriMonth) {
 }
 
 /**
- * Get month length.
- * Only trust the diff when BOTH this month and next month are confirmed.
- * If either is unconfirmed (from hijri-converter fallback), default to 30.
+ * Get month length (29 or 30).
+ * If both months confirmed: use actual diff.
+ * Otherwise: use hijri-converter's 29/30 pattern.
  */
 export function getMonthLength(hijriYear, hijriMonth) {
   const thisKey = `${hijriYear}-${hijriMonth}`
@@ -59,26 +74,14 @@ export function getMonthLength(hijriYear, hijriMonth) {
   const nextYear = hijriMonth === 12 ? hijriYear + 1 : hijriYear
   const nextKey = `${nextYear}-${nextMonth}`
 
-  const thisConfirmed = !!confirmedStarts[thisKey]
-  const nextConfirmed = !!confirmedStarts[nextKey]
-
-  // Only compute diff if BOTH months are confirmed sightings
-  if (thisConfirmed && nextConfirmed) {
+  // If both confirmed, use actual diff
+  if (confirmedStarts[thisKey] && confirmedStarts[nextKey]) {
     const [sy, sm, sd] = confirmedStarts[thisKey].split('-').map(Number)
     const [ny, nm, nd] = confirmedStarts[nextKey].split('-').map(Number)
-    const start = new Date(sy, sm - 1, sd)
-    const next = new Date(ny, nm - 1, nd)
-    const diff = Math.round((next - start) / (1000 * 60 * 60 * 24))
-    if (diff >= 29 && diff <= 30) return diff
+    const diff = Math.round((new Date(ny, nm-1, nd) - new Date(sy, sm-1, sd)) / (1000*60*60*24))
+    if (diff === 29 || diff === 30) return diff
   }
 
-  // Otherwise default to 30 — never mix confirmed with unconfirmed
-  return 30
-}
-
-/**
- * Add a confirmed month start (called by the scraper/cron)
- */
-export function addConfirmedStart(hijriYear, hijriMonth, gregorianStart) {
-  confirmedStarts[`${hijriYear}-${hijriMonth}`] = gregorianStart
+  // Otherwise use hijri-converter's correct 29/30 pattern
+  return getSunniMonthLength(hijriYear, hijriMonth)
 }
