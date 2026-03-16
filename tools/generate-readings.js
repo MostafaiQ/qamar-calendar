@@ -111,7 +111,7 @@ function getMoonSign(hijriDay) {
   let remainder = n % 5
   if (remainder === 0) remainder = 5
   const totalDistributions = remainder === 5 ? quotient : quotient + 1
-  const signIndex = totalDistributions % 12
+  const signIndex = (totalDistributions - 1) % 12
   const nightDuration = (remainder % 2 === 0) ? 2 : 3
   let positionInSign
   if (nightDuration === 2) {

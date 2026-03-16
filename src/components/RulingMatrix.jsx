@@ -15,7 +15,7 @@ export default function RulingMatrix({ consensus }) {
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 px-4 py-2 bg-gray-50 dark:bg-gray-750 border-b border-gray-200 dark:border-gray-700 font-arabic">
+      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 font-arabic">
         {t('rulings')}
       </h3>
       <div className="divide-y divide-gray-100 dark:divide-gray-700">

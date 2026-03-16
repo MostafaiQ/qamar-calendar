@@ -9,7 +9,9 @@ export function getMoonSign(hijriDay) {
   if (remainder === 0) remainder = 5
 
   const totalDistributions = remainder === 5 ? quotient : quotient + 1
-  const signIndex = totalDistributions % 12
+  // Count totalDistributions steps starting from Pisces as 1
+  // e.g. totalDist=12 → step 12 from Pisces(1) = Aquarius(11)
+  const signIndex = (totalDistributions - 1) % 12
 
   // Even remainders (2,4) = 2 nights; odd remainders (1,3,5) = 3 nights
   const nightDuration = (remainder % 2 === 0) ? 2 : 3
