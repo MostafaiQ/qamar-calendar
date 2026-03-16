@@ -1,10 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useMemo } from 'react'
 import { toHijri } from 'hijri-converter'
 
-export function useHijriDate(gregorianDate) {
-  const [hijri, setHijri] = useState(() => {
-    // Compute synchronously for instant render
-    const adjustment = parseInt(localStorage.getItem('hijriAdjustment') || '0')
+export function useHijriDate(gregorianDate, adjustment = 0) {
+  const hijri = useMemo(() => {
     try {
       const { hy, hm, hd } = toHijri(
         gregorianDate.getFullYear(),
@@ -18,11 +16,11 @@ export function useHijriDate(gregorianDate) {
       if (day > 30) { month++; day -= 30 }
       if (month < 1) { year--; month = 12 }
       if (month > 12) { year++; month = 1 }
-      return { year, month, day, source: 'local' }
+      return { year, month, day }
     } catch (e) {
-      return { year: 1447, month: 1, day: 1, source: 'fallback' }
+      return { year: 1447, month: 1, day: 1 }
     }
-  })
+  }, [gregorianDate.getTime(), adjustment])
 
-  return { hijri, loading: false }
+  return { hijri }
 }

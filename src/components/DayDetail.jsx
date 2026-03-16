@@ -15,18 +15,17 @@ export default function DayDetail({ hijri, gregorianDate }) {
   if (!dayData || !hijri) return null
 
   const monthData = months.find(m => m.num === hijri.month) || months[0]
-  const monthName = lang === 'ar' ? monthData.ar : monthData.en
+  const monthName = lang === 'ar' ? `شهر ${monthData.ar}` : monthData.en
   const weekday = getWeekdayName(dayData.weekdayIndex, lang)
 
   return (
     <div className="space-y-3 p-4">
-      {/* Day header */}
-      <div className="text-center pb-2 border-b border-gray-200">
-        <h2 className="text-lg font-bold text-gray-800 font-arabic">
+      <div className="text-center pb-2 border-b border-gray-200 dark:border-gray-700">
+        <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 font-arabic">
           {hijri.day} {monthName} {hijri.year}
         </h2>
-        <p className="text-sm text-gray-500 font-arabic">{weekday}</p>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-sm text-gray-500 dark:text-gray-400 font-arabic">{weekday}</p>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
           {gregorianDate.toLocaleDateString('en-CA')}
         </p>
       </div>

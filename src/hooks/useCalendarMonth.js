@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { toGregorian } from 'hijri-converter'
+import { useMemo } from 'react'
+import { toHijri, toGregorian } from 'hijri-converter'
 import { getMoonSign } from '../engine/moonSign.js'
 import { getConsensus } from '../engine/consensus.js'
 import { getWeekdayIndex, addDays } from '../utils/dateHelpers.js'
@@ -8,19 +8,17 @@ import { getWeekdayIndex, addDays } from '../utils/dateHelpers.js'
  * Returns a full month of day objects for the calendar grid.
  * Uses hijri-converter directly for fast local computation.
  */
-export function useCalendarMonth(hijriYear, hijriMonth) {
-  const [days, setDays] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    setLoading(true)
-
+export function useCalendarMonth(hijriYear, hijriMonth, adjustment = 0) {
+  const days = useMemo(() => {
     try {
       // Get Gregorian date for 1st of this Hijri month
       const { gy, gm, gd } = toGregorian(hijriYear, hijriMonth, 1)
       const startGregorian = new Date(gy, gm - 1, gd)
 
-      // Try to get Gregorian date for 1st of next month to know the month length
+      // Apply adjustment (shift start date)
+      const adjustedStart = addDays(startGregorian, -adjustment)
+
+      // Determine month length by checking when next month starts
       let monthLength = 30
       try {
         const nextMonth = hijriMonth === 12 ? 1 : hijriMonth + 1
@@ -33,10 +31,9 @@ export function useCalendarMonth(hijriYear, hijriMonth) {
         // default to 30
       }
 
-      // Build month days
       const monthDays = []
       for (let i = 0; i < monthLength; i++) {
-        const gDate = addDays(startGregorian, i)
+        const gDate = addDays(adjustedStart, i)
         const hijriDay = i + 1
         const weekdayIndex = getWeekdayIndex(gDate)
         const { signIndex, nightDuration, positionInSign } = getMoonSign(hijriDay)
@@ -47,18 +44,18 @@ export function useCalendarMonth(hijriYear, hijriMonth) {
           gregorianDate: gDate,
           weekdayIndex,
           signIndex,
+          nightDuration,
+          positionInSign,
           consensus,
         })
       }
 
-      setDays(monthDays)
+      return monthDays
     } catch (e) {
       console.error('Failed to build month:', e)
-      setDays([])
+      return []
     }
+  }, [hijriYear, hijriMonth, adjustment])
 
-    setLoading(false)
-  }, [hijriYear, hijriMonth])
-
-  return { days, loading }
+  return { days }
 }
