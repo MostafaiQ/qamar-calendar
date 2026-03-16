@@ -1,66 +1,52 @@
 import { useState, useEffect } from 'react'
-import { resolveHijriDate } from '../engine/hijriResolver.js'
+import { toHijri, toGregorian } from 'hijri-converter'
 import { getMoonSign } from '../engine/moonSign.js'
 import { getConsensus } from '../engine/consensus.js'
 import { getWeekdayIndex, addDays } from '../utils/dateHelpers.js'
 
 /**
  * Returns a full month of day objects for the calendar grid.
- * Starts from the first day of the given Hijri month.
+ * Uses hijri-converter directly for fast local computation.
  */
 export function useCalendarMonth(hijriYear, hijriMonth, refGregorianDate) {
   const [days, setDays] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let cancelled = false
     setLoading(true)
+    const adjustment = parseInt(localStorage.getItem('hijriAdjustment') || '0')
 
-    async function buildMonth() {
-      // Find the Gregorian date for the 1st of this Hijri month
-      // by searching around the reference date
-      let startGregorian = null
-      const refHijri = await resolveHijriDate(refGregorianDate)
-      if (!refHijri) return
+    try {
+      // Get Gregorian date for 1st of this Hijri month
+      const { gy, gm, gd } = toGregorian(hijriYear, hijriMonth, 1)
+      const startGregorian = new Date(gy, gm - 1, gd)
 
-      // Calculate offset to reach day 1 of the target month
-      let dayOffset = 0
-      if (refHijri.year === hijriYear && refHijri.month === hijriMonth) {
-        dayOffset = -(refHijri.day - 1)
-      } else {
-        // Rough estimate: each Hijri month ~29.5 days
-        const monthDiff = (hijriYear - refHijri.year) * 12 + (hijriMonth - refHijri.month)
-        dayOffset = Math.round(monthDiff * 29.5) - (refHijri.day - 1)
-      }
+      // Apply adjustment
+      const adjustedStart = addDays(startGregorian, -adjustment)
 
-      startGregorian = addDays(refGregorianDate, dayOffset)
-
-      // Verify and adjust
-      let startHijri = await resolveHijriDate(startGregorian)
-      let attempts = 0
-      while (startHijri && startHijri.day !== 1 && attempts < 5) {
-        const adj = -(startHijri.day - 1)
-        startGregorian = addDays(startGregorian, adj)
-        startHijri = await resolveHijriDate(startGregorian)
-        attempts++
-      }
-
-      // Build 30 days
+      // Build 30 days (or 29)
       const monthDays = []
       for (let i = 0; i < 30; i++) {
-        const gDate = addDays(startGregorian, i)
-        const hDate = await resolveHijriDate(gDate)
-        if (!hDate || cancelled) break
+        const gDate = addDays(adjustedStart, i)
+        const hijriDay = i + 1
 
-        // Only include days that belong to this month
-        if (hDate.month !== hijriMonth && monthDays.length > 0) break
+        // Verify this day is still in the same month
+        try {
+          const check = toHijri(gDate.getFullYear(), gDate.getMonth() + 1, gDate.getDate())
+          const adjDay = check.hd + adjustment
+          // If the conversion doesn't match, we've gone past the month
+          if (check.hm !== hijriMonth && i > 0) break
+        } catch (e) {
+          // If conversion fails for day 30, month is only 29 days
+          if (i === 29) break
+        }
 
         const weekdayIndex = getWeekdayIndex(gDate)
-        const { signIndex, nightDuration, positionInSign } = getMoonSign(hDate.day)
-        const consensus = getConsensus(hDate.day, signIndex, weekdayIndex, positionInSign)
+        const { signIndex, nightDuration, positionInSign } = getMoonSign(hijriDay)
+        const consensus = getConsensus(hijriDay, signIndex, weekdayIndex, positionInSign)
 
         monthDays.push({
-          hijriDay: hDate.day,
+          hijriDay,
           gregorianDate: gDate,
           weekdayIndex,
           signIndex,
@@ -68,15 +54,14 @@ export function useCalendarMonth(hijriYear, hijriMonth, refGregorianDate) {
         })
       }
 
-      if (!cancelled) {
-        setDays(monthDays)
-        setLoading(false)
-      }
+      setDays(monthDays)
+    } catch (e) {
+      console.error('Failed to build month:', e)
+      setDays([])
     }
 
-    buildMonth()
-    return () => { cancelled = true }
-  }, [hijriYear, hijriMonth, refGregorianDate.getTime()])
+    setLoading(false)
+  }, [hijriYear, hijriMonth])
 
   return { days, loading }
 }
