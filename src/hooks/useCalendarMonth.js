@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { toHijri, toGregorian } from 'hijri-converter'
+import { toGregorian } from 'hijri-converter'
 import { getMoonSign } from '../engine/moonSign.js'
 import { getConsensus } from '../engine/consensus.js'
 import { getWeekdayIndex, addDays } from '../utils/dateHelpers.js'
@@ -8,39 +8,36 @@ import { getWeekdayIndex, addDays } from '../utils/dateHelpers.js'
  * Returns a full month of day objects for the calendar grid.
  * Uses hijri-converter directly for fast local computation.
  */
-export function useCalendarMonth(hijriYear, hijriMonth, refGregorianDate) {
+export function useCalendarMonth(hijriYear, hijriMonth) {
   const [days, setDays] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setLoading(true)
-    const adjustment = parseInt(localStorage.getItem('hijriAdjustment') || '0')
 
     try {
       // Get Gregorian date for 1st of this Hijri month
       const { gy, gm, gd } = toGregorian(hijriYear, hijriMonth, 1)
       const startGregorian = new Date(gy, gm - 1, gd)
 
-      // Apply adjustment
-      const adjustedStart = addDays(startGregorian, -adjustment)
+      // Try to get Gregorian date for 1st of next month to know the month length
+      let monthLength = 30
+      try {
+        const nextMonth = hijriMonth === 12 ? 1 : hijriMonth + 1
+        const nextYear = hijriMonth === 12 ? hijriYear + 1 : hijriYear
+        const next = toGregorian(nextYear, nextMonth, 1)
+        const nextDate = new Date(next.gy, next.gm - 1, next.gd)
+        const diff = Math.round((nextDate - startGregorian) / (1000 * 60 * 60 * 24))
+        if (diff === 29 || diff === 30) monthLength = diff
+      } catch (e) {
+        // default to 30
+      }
 
-      // Build 30 days (or 29)
+      // Build month days
       const monthDays = []
-      for (let i = 0; i < 30; i++) {
-        const gDate = addDays(adjustedStart, i)
+      for (let i = 0; i < monthLength; i++) {
+        const gDate = addDays(startGregorian, i)
         const hijriDay = i + 1
-
-        // Verify this day is still in the same month
-        try {
-          const check = toHijri(gDate.getFullYear(), gDate.getMonth() + 1, gDate.getDate())
-          const adjDay = check.hd + adjustment
-          // If the conversion doesn't match, we've gone past the month
-          if (check.hm !== hijriMonth && i > 0) break
-        } catch (e) {
-          // If conversion fails for day 30, month is only 29 days
-          if (i === 29) break
-        }
-
         const weekdayIndex = getWeekdayIndex(gDate)
         const { signIndex, nightDuration, positionInSign } = getMoonSign(hijriDay)
         const consensus = getConsensus(hijriDay, signIndex, weekdayIndex, positionInSign)

@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react'
 import { LocaleProvider, useLocale } from './i18n/useLocale.jsx'
 import { useHijriDate } from './hooks/useHijriDate.js'
 import { useCalendarMonth } from './hooks/useCalendarMonth.js'
-import { clearMonthStartsCache } from './engine/hijriResolver.js'
 import { addDays } from './utils/dateHelpers.js'
 import Header from './components/Header.jsx'
 import MonthNav from './components/MonthNav.jsx'
@@ -24,7 +23,7 @@ function AppContent() {
   const currentYear = viewYear || hijri?.year || 1447
   const currentMonth = viewMonth || hijri?.month || 1
 
-  const { days, loading: monthLoading } = useCalendarMonth(currentYear, currentMonth, refDate)
+  const { days, loading: monthLoading } = useCalendarMonth(currentYear, currentMonth)
 
   const handleDayClick = useCallback((day) => {
     setSelectedDay(day.hijriDay)
@@ -54,7 +53,6 @@ function AppContent() {
   }, [currentYear, currentMonth])
 
   const handleAdjustmentChange = useCallback(() => {
-    clearMonthStartsCache()
     window.location.reload()
   }, [])
 
