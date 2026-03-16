@@ -12,6 +12,11 @@ const overallBg = {
   neutral: '',
 }
 
+// Convert to Arabic-Indic numerals (٠١٢٣٤٥٦٧٨٩)
+function toArabicNum(n) {
+  return String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d])
+}
+
 export default function DayCell({ day, isSelected, isToday, onClick }) {
   const dotColor = overallColors[day.consensus.overall] || 'bg-gray-300'
   const cellBg = overallBg[day.consensus.overall] || ''
@@ -31,7 +36,7 @@ export default function DayCell({ day, isSelected, isToday, onClick }) {
         }
       `}
     >
-      <span className={`text-[15px] font-bold leading-none
+      <span className={`text-[15px] font-bold leading-none font-arabic
         ${isSelected
           ? 'text-white'
           : isToday
@@ -39,9 +44,9 @@ export default function DayCell({ day, isSelected, isToday, onClick }) {
             : 'text-gray-800 dark:text-gray-200'
         }`}
       >
-        {day.hijriDay}
+        {toArabicNum(day.hijriDay)}
       </span>
-      <span className={`text-[9px] leading-none
+      <span className={`text-[9px] leading-none font-sans
         ${isSelected ? 'text-white/60' : 'text-gray-400 dark:text-gray-500'}`}
       >
         {gDay}
