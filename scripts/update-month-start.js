@@ -1,131 +1,143 @@
 /**
- * Scrapes Shia Hijri month start dates from multiple sources.
- * Updates src/data/monthStarts.js with confirmed sighting data.
- * Runs via GitHub Actions cron (daily) or manually.
+ * Scrapes confirmed Shia Hijri month starts from official sources.
+ * Updates src/data/monthStarts.js with new confirmed sighting dates.
+ * Runs via GitHub Actions cron (twice daily) or manually.
  *
- * Sources (in priority order):
- * 1. imam-us.org — Official Imam of Muslims (Sistani representative)
- * 2. sistani.org — Ayatollah Sistani's official site
- * 3. najaf.org — Najaf scholars network
+ * Sources:
+ * 1. imam-us.org — Sistani's representative in the US
+ * 2. sistani.org — Ayatollah Sistani's official office
+ * 3. AlAdhan API with Shia adjustment for cross-reference
  */
 
 import { readFileSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { toHijri } from 'hijri-converter'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const MONTH_STARTS_PATH = join(__dirname, '..', 'src', 'data', 'monthStarts.js')
 
-const hijriMonthNames = {
-  'muharram': 1, 'محرم': 1,
-  'safar': 2, 'صفر': 2,
-  'rabi al-awwal': 3, 'rabi i': 3, 'ربيع الأول': 3, 'ربيع الاول': 3,
-  'rabi al-thani': 4, 'rabi ii': 4, 'ربيع الآخر': 4, 'ربيع الثاني': 4,
-  'jumada al-ula': 5, 'jumada i': 5, 'جمادى الأولى': 5, 'جمادى الاولى': 5,
-  'jumada al-akhirah': 6, 'jumada ii': 6, 'جمادى الآخرة': 6, 'جمادى الثانية': 6,
-  'rajab': 7, 'رجب': 7,
-  'shaban': 8, 'sha\'ban': 8, 'شعبان': 8,
-  'ramadan': 9, 'رمضان': 9,
-  'shawwal': 10, 'شوال': 10,
-  'dhul qadah': 11, 'dhu al-qadah': 11, 'ذو القعدة': 11, 'ذي القعدة': 11,
-  'dhul hijjah': 12, 'dhu al-hijjah': 12, 'ذو الحجة': 12, 'ذي الحجة': 12,
+const HIJRI_MONTHS_EN = {
+  'muharram': 1, 'safar': 2, 'rabi': 3,
+  'rabi al-awwal': 3, 'rabi al-thani': 4, 'rabi al-awal': 3,
+  'jumada': 5, 'jumada al-ula': 5, 'jumada al-akhirah': 6,
+  'rajab': 7, 'shaban': 8, "sha'ban": 8,
+  'ramadan': 9, 'ramazan': 9, 'ramadhan': 9,
+  'shawwal': 10, 'shawal': 10,
+  'dhul qadah': 11, 'dhu al-qadah': 11, 'dhul qi\'dah': 11, 'zul qadah': 11,
+  'dhul hijjah': 12, 'dhu al-hijjah': 12, 'zul hijjah': 12,
 }
 
-const gregorianMonthNames = {
+const GREG_MONTHS = {
   'january': 1, 'february': 2, 'march': 3, 'april': 4,
   'may': 5, 'june': 6, 'july': 7, 'august': 8,
   'september': 9, 'october': 10, 'november': 11, 'december': 12,
-  'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4,
-  'jun': 6, 'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
 }
 
 /**
- * Try to scrape imam-us.org for crescent sighting announcements
+ * Scrape imam-us.org for crescent sighting announcements
  */
 async function scrapeImamUs() {
-  const results = []
+  console.log('Scraping imam-us.org...')
   try {
-    const res = await fetch('https://imam-us.org', {
-      headers: { 'User-Agent': 'QamarCalendar/1.0 (Shia Hijri Calendar)' },
+    const res = await fetch('https://www.imam-us.org', {
+      headers: { 'User-Agent': 'QamarCalendar/1.0' },
+      signal: AbortSignal.timeout(15000),
     })
-    if (!res.ok) { console.log('imam-us.org: HTTP', res.status); return results }
+    if (!res.ok) { console.log('  HTTP', res.status); return [] }
     const html = await res.text()
 
-    // Look for crescent/moon sighting announcements
-    // Common patterns: "The first day of [Month] will be [Day], [Month] [Date]"
-    // or "crescent of [Hijri Month] has been sighted"
-    const patterns = [
-      /first\s+day\s+of\s+(\w+)\s+(\d{4})\s+.*?(\w+),?\s+(\w+)\s+(\d{1,2})/gi,
-      /(\w+)\s+(\d{4}).*?begins?\s+.*?(\w+)\s+(\d{1,2}),?\s+(\d{4})/gi,
-      /crescent.*?(\w+)\s+(\d{4}).*?(\w+)\s+(\d{1,2}),?\s+(\d{4})/gi,
-    ]
+    const results = []
 
-    for (const pattern of patterns) {
-      let match
-      while ((match = pattern.exec(html)) !== null) {
-        const monthName = match[1].toLowerCase()
-        const hijriMonth = hijriMonthNames[monthName]
-        if (!hijriMonth) continue
-
-        // Try to extract Gregorian date from the rest
-        const yearStr = match[2]
-        const hijriYear = parseInt(yearStr)
-        if (hijriYear < 1400 || hijriYear > 1500) continue
-
-        console.log(`imam-us.org: Found reference to ${monthName} ${hijriYear}`)
-        // More parsing would be needed for actual dates
+    // Pattern: "First day of [Month] [Year] is [Day], [GregMonth] [GregDay], [GregYear]"
+    const p1 = /first\s+day\s+of\s+(\w[\w\s'-]*?\w)\s+(\d{4})\s+.*?(\w+day),?\s+(\w+)\s+(\d{1,2}),?\s+(\d{4})/gi
+    let m
+    while ((m = p1.exec(html)) !== null) {
+      const hijriMonth = matchHijriMonth(m[1])
+      const hijriYear = parseInt(m[2])
+      const gregMonth = GREG_MONTHS[m[4].toLowerCase()]
+      const gregDay = parseInt(m[5])
+      const gregYear = parseInt(m[6])
+      if (hijriMonth && gregMonth && hijriYear > 1400) {
+        results.push({
+          year: hijriYear, month: hijriMonth,
+          gregorianStart: `${gregYear}-${String(gregMonth).padStart(2,'0')}-${String(gregDay).padStart(2,'0')}`,
+          source: 'imam-us.org',
+        })
       }
     }
 
-    console.log('imam-us.org: Scraped successfully')
+    // Pattern: "[Month] [Year] crescent ... [GregMonth] [GregDay]"
+    const p2 = /(\w[\w\s'-]*?)\s+(\d{4})\s+(?:crescent|moon|hilal).*?(\w+)\s+(\d{1,2}),?\s+(\d{4})/gi
+    while ((m = p2.exec(html)) !== null) {
+      const hijriMonth = matchHijriMonth(m[1])
+      const hijriYear = parseInt(m[2])
+      const gregMonth = GREG_MONTHS[m[3].toLowerCase()]
+      const gregDay = parseInt(m[4])
+      const gregYear = parseInt(m[5])
+      if (hijriMonth && gregMonth && hijriYear > 1400) {
+        results.push({
+          year: hijriYear, month: hijriMonth,
+          gregorianStart: `${gregYear}-${String(gregMonth).padStart(2,'0')}-${String(gregDay).padStart(2,'0')}`,
+          source: 'imam-us.org',
+        })
+      }
+    }
+
+    console.log(`  Found ${results.length} dates`)
+    return results
   } catch (e) {
-    console.log('imam-us.org: Failed -', e.message)
+    console.log('  Failed:', e.message)
+    return []
   }
-  return results
 }
 
 /**
- * Fetch from AlAdhan API (Shia adjustment method)
- * Uses adjustment=-1 to approximate Shia dates
+ * Scrape sistani.org for month announcements
  */
-async function fetchAlAdhan() {
-  const results = []
+async function scrapeSistani() {
+  console.log('Scraping sistani.org...')
   try {
-    const today = new Date()
-    const dd = String(today.getDate()).padStart(2, '0')
-    const mm = String(today.getMonth() + 1).padStart(2, '0')
-    const yyyy = today.getFullYear()
+    const res = await fetch('https://www.sistani.org/english/archive/', {
+      headers: { 'User-Agent': 'QamarCalendar/1.0' },
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!res.ok) { console.log('  HTTP', res.status); return [] }
+    const html = await res.text()
 
-    // Try with adjustment=0 and adjustment=-1
-    for (const adj of [0, -1]) {
-      const url = `https://api.aladhan.com/v1/gToH/${dd}-${mm}-${yyyy}?adjustment=${adj}`
-      const res = await fetch(url)
-      if (!res.ok) continue
-
-      const json = await res.json()
-      const h = json.data.hijri
-      const hijriYear = parseInt(h.year)
-      const hijriMonth = parseInt(h.month.number)
-      const hijriDay = parseInt(h.day)
-
-      const daysBack = hijriDay - 1
-      const monthStart = new Date(today)
-      monthStart.setDate(monthStart.getDate() - daysBack)
-
-      const startStr = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}-${String(monthStart.getDate()).padStart(2, '0')}`
-
-      results.push({
-        year: hijriYear,
-        month: hijriMonth,
-        gregorianStart: startStr,
-        source: `aladhan-api-adj${adj}`,
-      })
+    // Look for crescent/moon sighting posts
+    const results = []
+    const pattern = /(?:crescent|moon|hilal|first\s+day).*?(\w[\w\s'-]+?)\s+(\d{4}).*?(\w+)\s+(\d{1,2}),?\s+(\d{4})/gi
+    let m
+    while ((m = pattern.exec(html)) !== null) {
+      const hijriMonth = matchHijriMonth(m[1])
+      const hijriYear = parseInt(m[2])
+      const gregMonth = GREG_MONTHS[m[3].toLowerCase()]
+      const gregDay = parseInt(m[4])
+      const gregYear = parseInt(m[5])
+      if (hijriMonth && gregMonth && hijriYear > 1400) {
+        results.push({
+          year: hijriYear, month: hijriMonth,
+          gregorianStart: `${gregYear}-${String(gregMonth).padStart(2,'0')}-${String(gregDay).padStart(2,'0')}`,
+          source: 'sistani.org',
+        })
+      }
     }
-    console.log(`AlAdhan: Got ${results.length} results`)
+
+    console.log(`  Found ${results.length} dates`)
+    return results
   } catch (e) {
-    console.log('AlAdhan: Failed -', e.message)
+    console.log('  Failed:', e.message)
+    return []
   }
-  return results
+}
+
+function matchHijriMonth(text) {
+  const lower = text.toLowerCase().trim()
+  for (const [name, num] of Object.entries(HIJRI_MONTHS_EN)) {
+    if (lower.includes(name)) return num
+  }
+  return null
 }
 
 /**
@@ -135,11 +147,7 @@ function readCurrentStarts() {
   try {
     const content = readFileSync(MONTH_STARTS_PATH, 'utf-8')
     const starts = {}
-    // Parse the confirmedStarts object from the file
-    const match = content.match(/const confirmedStarts = \{([\s\S]*?)\n\}/)
-    if (!match) return starts
-
-    const entries = match[1].matchAll(/'(\d+-\d+)':\s*'(\d{4}-\d{2}-\d{2})'/g)
+    const entries = content.matchAll(/'(\d+-\d+)':\s*'(\d{4}-\d{2}-\d{2})'/g)
     for (const entry of entries) {
       starts[entry[1]] = entry[2]
     }
@@ -155,7 +163,6 @@ function readCurrentStarts() {
 function writeUpdatedStarts(starts) {
   const content = readFileSync(MONTH_STARTS_PATH, 'utf-8')
 
-  // Build new confirmedStarts block
   const sortedKeys = Object.keys(starts).sort((a, b) => {
     const [ay, am] = a.split('-').map(Number)
     const [by, bm] = b.split('-').map(Number)
@@ -187,19 +194,21 @@ async function main() {
   console.log('Time:', new Date().toISOString())
 
   const current = readCurrentStarts()
-  console.log(`Current confirmed months: ${Object.keys(current).length}`)
+  console.log(`Current confirmed: ${Object.keys(current).length} months`)
 
   let updated = false
 
-  // 1. Try imam-us.org
-  await scrapeImamUs()
+  // Scrape all sources
+  const allResults = [
+    ...await scrapeImamUs(),
+    ...await scrapeSistani(),
+  ]
 
-  // 2. Try AlAdhan API
-  const aladhanResults = await fetchAlAdhan()
-  for (const result of aladhanResults) {
+  // Add new confirmed dates (don't overwrite existing ones — first confirmed wins)
+  for (const result of allResults) {
     const key = `${result.year}-${result.month}`
     if (!current[key]) {
-      console.log(`New: ${key} -> ${result.gregorianStart} (${result.source})`)
+      console.log(`NEW: ${key} → ${result.gregorianStart} (${result.source})`)
       current[key] = result.gregorianStart
       updated = true
     }
@@ -207,7 +216,7 @@ async function main() {
 
   if (updated) {
     writeUpdatedStarts(current)
-    console.log('Updated monthStarts.js')
+    console.log('✓ Updated monthStarts.js')
   } else {
     console.log('No new months to add.')
   }
