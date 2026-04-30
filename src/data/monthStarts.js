@@ -17,6 +17,9 @@ export const confirmedStarts = {
   '1447-10': '2026-03-21',   // Shawwal
   '1447-11': '2026-04-19',   // Dhul Qadah
   '1447-12': '2026-05-18',   // Dhul Hijjah
+
+  // 1448 — derived from 1447 Dhul Hijjah (30 days per Sistani)
+  '1448-1':  '2026-06-17',   // Muharram
 }
 
 /**
