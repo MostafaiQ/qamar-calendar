@@ -84,6 +84,15 @@ function AppContent() {
     else { setViewYear(currentYear); setViewMonth(currentMonth + 1) }
   }, [currentYear, currentMonth])
 
+  const handleToday = useCallback(() => {
+    setSelectedDay(null)
+    setSelectedGregorian(refDate)
+    setViewYear(null)
+    setViewMonth(null)
+  }, [refDate])
+
+  const isToday = !viewYear && !viewMonth && !selectedDay
+
   const handleAdjustmentChange = useCallback((newVal) => {
     setAdjustment(newVal)
     localStorage.setItem('hijriAdjustment', String(newVal))
@@ -110,6 +119,8 @@ function AppContent() {
               hijriMonth={currentMonth}
               onPrev={handlePrevMonth}
               onNext={handleNextMonth}
+              onToday={handleToday}
+              isToday={isToday}
             />
             <div
               onTouchStart={handleTouchStart}
