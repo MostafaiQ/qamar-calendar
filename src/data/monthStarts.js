@@ -4,7 +4,19 @@ import { toGregorian } from 'hijri-converter'
 // Populated by GitHub Actions cron job scraping imam-us.org / sistani.org
 // ONLY add dates here that are confirmed via moon sighting announcements.
 export const confirmedStarts = {
-  '1447-9':  '2026-02-19',   // Ramadan — confirmed imam-us.org
+  // 1447 — source: sistani.org مواقيت الأهلة لعام ١٤٤٧ هـ
+  '1447-1':  '2025-06-27',   // Muharram
+  '1447-2':  '2025-07-27',   // Safar
+  '1447-3':  '2025-08-25',   // Rabi al-Awwal
+  '1447-4':  '2025-09-24',   // Rabi al-Thani
+  '1447-5':  '2025-10-24',   // Jumada al-Ula
+  '1447-6':  '2025-11-23',   // Jumada al-Akhirah
+  '1447-7':  '2025-12-22',   // Rajab
+  '1447-8':  '2026-01-21',   // Shaban
+  '1447-9':  '2026-02-19',   // Ramadan
+  '1447-10': '2026-03-21',   // Shawwal
+  '1447-11': '2026-04-19',   // Dhul Qadah
+  '1447-12': '2026-05-18',   // Dhul Hijjah
 }
 
 /**
