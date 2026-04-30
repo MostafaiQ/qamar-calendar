@@ -3,7 +3,7 @@ import { toGregorian } from 'hijri-converter'
 // Confirmed Shia/Sistani month starts from sighting announcements
 // Populated by GitHub Actions cron job scraping imam-us.org / sistani.org
 // ONLY add dates here that are confirmed via moon sighting announcements.
-const confirmedStarts = {
+export const confirmedStarts = {
   '1447-9':  '2026-02-19',   // Ramadan — confirmed imam-us.org
 }
 

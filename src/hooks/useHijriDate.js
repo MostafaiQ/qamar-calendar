@@ -1,56 +1,37 @@
-import { useMemo } from 'react'
-import { toHijri } from 'hijri-converter'
-import { getMonthStart } from '../data/monthStarts.js'
+import { useState, useEffect } from 'react'
+import { resolveHijriDate } from '../engine/hijriResolver.js'
 
 /**
  * Resolve today's Shia Hijri date.
- * Uses confirmed month starts from monthStarts.js.
- * Falls back to hijri-converter for approximate year/month only.
+ * Priority: confirmed overrides → AlAdhan API → hijri-converter fallback.
+ * No Sunni chaining.
  */
 export function useHijriDate(gregorianDate, adjustment = 0) {
-  const hijri = useMemo(() => {
+  const [hijri, setHijri] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+
     const dateMidnight = new Date(
       gregorianDate.getFullYear(),
       gregorianDate.getMonth(),
       gregorianDate.getDate()
     )
 
-    // Get approximate Hijri year/month from hijri-converter (just for searching)
-    const { hy, hm } = toHijri(
-      dateMidnight.getFullYear(),
-      dateMidnight.getMonth() + 1,
-      dateMidnight.getDate()
-    )
+    resolveHijriDate(dateMidnight).then(result => {
+      if (cancelled) return
 
-    // Search nearby months (current, previous, next) to find the right one
-    const candidates = [
-      { y: hy, m: hm },
-      { y: hy, m: hm + 1 > 12 ? 1 : hm + 1, yAdj: hm + 1 > 12 ? 1 : 0 },
-      { y: hy, m: hm - 1 < 1 ? 12 : hm - 1, yAdj: hm - 1 < 1 ? -1 : 0 },
-    ]
+      let { year, month, day } = result
+      day += adjustment
+      if (day < 1) { month--; day += 30 }
+      if (day > 30) { month++; day -= 30 }
+      if (month < 1) { year--; month = 12 }
+      if (month > 12) { year++; month = 1 }
 
-    for (const c of candidates) {
-      const year = c.y + (c.yAdj || 0)
-      const startStr = getMonthStart(year, c.m)
-      if (!startStr) continue
+      setHijri({ year, month, day, source: result.source })
+    })
 
-      const [sy, sm, sd] = startStr.split('-').map(Number)
-      const start = new Date(sy, sm - 1, sd)
-      const diffDays = Math.round((dateMidnight - start) / (1000 * 60 * 60 * 24))
-      const hijriDay = diffDays + 1 + adjustment
-
-      if (hijriDay >= 1 && hijriDay <= 30) {
-        return { year, month: c.m, day: hijriDay }
-      }
-    }
-
-    // Last resort: use hijri-converter directly
-    const { hy: fy, hm: fm, hd: fd } = toHijri(
-      dateMidnight.getFullYear(),
-      dateMidnight.getMonth() + 1,
-      dateMidnight.getDate()
-    )
-    return { year: fy, month: fm, day: fd + adjustment }
+    return () => { cancelled = true }
   }, [gregorianDate.getTime(), adjustment])
 
   return { hijri }
