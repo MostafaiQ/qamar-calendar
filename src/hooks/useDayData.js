@@ -17,7 +17,7 @@ export function useDayData(hijri, gregorianDate) {
 
     const hijriDay = hijri.day
     const weekdayIndex = getWeekdayIndex(gregorianDate)
-    const { signIndex, nightDuration, positionInSign } = getMoonSign(hijriDay)
+    const { signIndex, nightDuration, positionInSign } = getMoonSign(hijriDay, gregorianDate)
     const consensus = getConsensus(hijriDay, signIndex, weekdayIndex, positionInSign)
     const narration = lunarDayNarrations[hijriDay]
     const sign = signs[signIndex]

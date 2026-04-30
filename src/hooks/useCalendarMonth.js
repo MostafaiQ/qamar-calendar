@@ -29,7 +29,7 @@ export function useCalendarMonth(hijriYear, hijriMonth, adjustment = 0) {
         const gDate = addDays(startGregorian, i)
         const hijriDay = i + 1
         const weekdayIndex = getWeekdayIndex(gDate)
-        const { signIndex, nightDuration, positionInSign } = getMoonSign(hijriDay)
+        const { signIndex, nightDuration, positionInSign } = getMoonSign(hijriDay, gDate)
         const consensus = getConsensus(hijriDay, signIndex, weekdayIndex, positionInSign)
 
         monthDays.push({
